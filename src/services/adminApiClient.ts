@@ -63,9 +63,12 @@ class AdminApiClient {
             console.error(`Cannot connect to backend at ${API_BASE_URL}. Make sure the backend server is running.`);
           }
           
+          const portMessage = API_BASE_URL.includes('https://') 
+            ? '' 
+            : ' Please ensure the backend is running.';
           return Promise.reject({
             ...error,
-            message: `Cannot connect to backend server at ${API_BASE_URL}. Please ensure the backend is running on port 3002.`,
+            message: `Cannot connect to backend server at ${API_BASE_URL}.${portMessage}`,
             isNetworkError: true,
           });
         }
