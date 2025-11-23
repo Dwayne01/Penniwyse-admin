@@ -133,9 +133,27 @@ class AiApiClient {
             console.error(`[AiApiClient] Cannot connect to AI service at ${AI_BASE_URL}. Make sure the AI service is running.`);
           }
           
+          // Extract port from URL if present, otherwise suggest default
+          let portMessage = '';
+          try {
+            const urlObj = new URL(AI_BASE_URL);
+            const port = urlObj.port || (urlObj.protocol === 'https:' ? '443' : '8000');
+            portMessage = urlObj.port 
+              ? `on port ${port}` 
+              : `(default port ${port} if not specified)`;
+          } catch {
+            // If URL parsing fails, check if URL contains a port
+            const portMatch = AI_BASE_URL.match(/:(\d+)/);
+            if (portMatch) {
+              portMessage = `on port ${portMatch[1]}`;
+            } else {
+              portMessage = '(default port 8000 if not specified)';
+            }
+          }
+          
           return Promise.reject({
             ...error,
-            message: `Cannot connect to AI service at ${AI_BASE_URL}. Please ensure the AI service is running on port 8000.`,
+            message: `Cannot connect to AI service at ${AI_BASE_URL}. Please ensure the AI service is running ${portMessage}.`,
             isNetworkError: true,
           });
         }
