@@ -1,5 +1,5 @@
 import { apiClient } from '../apiClient';
-import type { AdminSignInDto, AuthResponse } from '../../types/auth.types';
+import type { AdminSignInDto, AdminSignUpDto, AuthResponse } from '../../types/auth.types';
 
 class AuthService {
   async adminSignIn(credentials: AdminSignInDto): Promise<AuthResponse> {
@@ -15,6 +15,18 @@ class AuthService {
         response.data.tokens.refreshToken
       );
     }
+    
+    return response.data;
+  }
+
+  async adminSignUp(data: AdminSignUpDto): Promise<AuthResponse> {
+    const response = await apiClient.getClient().post<AuthResponse>(
+      '/api/auth/admin/signup',
+      data
+    );
+    
+    // Note: We don't store tokens here since this is for creating users, not logging in
+    // The tokens in the response are for the newly created user, not the admin creating them
     
     return response.data;
   }

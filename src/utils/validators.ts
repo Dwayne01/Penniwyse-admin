@@ -16,3 +16,11 @@ export const adminSignInSchema = z.object({
 
 export type AdminSignInFormData = z.infer<typeof adminSignInSchema>;
 
+export const adminSignUpSchema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
+  userType: z.string().optional(),
+});
+
+export type AdminSignUpFormData = z.infer<typeof adminSignUpSchema>;
+

@@ -3,6 +3,12 @@ export interface AdminSignInDto {
   password: string;
 }
 
+export interface AdminSignUpDto {
+  email: string;
+  password: string;
+  userType?: string;
+}
+
 export interface AuthResponse {
   user: SanitizedUser;
   tokens: {

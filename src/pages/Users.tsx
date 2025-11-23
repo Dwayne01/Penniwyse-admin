@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, Button, Input, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui';
 import { usersService } from '../services/api/users.service';
+import { authService } from '../services/api/auth.service';
+import { UserForm } from '../components/features/users/UserForm';
 import type { User, UserProfile, LoginHistory, ActivityLog } from '../types/user.types';
+import type { AdminSignUpFormData } from '../utils/validators';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { requestCache } from '../utils/requestCache';
-import { Search, Trophy, Award, Eye, Edit } from 'lucide-react';
+import { Search, Trophy, Award, Eye, Edit, Plus } from 'lucide-react';
 
 export function Users() {
   const [users, setUsers] = useState<User[]>([]);
@@ -14,6 +17,8 @@ export function Users() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
+  const [isCreateUserLoading, setIsCreateUserLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'gamification' | 'history' | 'activity'>('profile');
   const [xpAmount, setXpAmount] = useState('');
   const [badgeId, setBadgeId] = useState('');
@@ -102,6 +107,24 @@ export function Users() {
     }
   };
 
+  const handleCreateUser = async (data: AdminSignUpFormData) => {
+    try {
+      setIsCreateUserLoading(true);
+      await authService.adminSignUp(data);
+      alert('User created successfully');
+      setIsCreateUserModalOpen(false);
+      // Clear cache and reload users
+      requestCache.clear();
+      await loadUsers();
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create user';
+      alert(errorMessage);
+      console.error('Failed to create user:', error);
+    } finally {
+      setIsCreateUserLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -109,6 +132,10 @@ export function Users() {
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
           <p className="text-gray-600 mt-1">Manage all users and their accounts</p>
         </div>
+        <Button onClick={() => setIsCreateUserModalOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Create User
+        </Button>
       </div>
 
       <Card>
@@ -327,6 +354,23 @@ export function Users() {
             )}
           </div>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={isCreateUserModalOpen}
+        onClose={() => {
+          setIsCreateUserModalOpen(false);
+        }}
+        title="Create New User"
+        size="md"
+      >
+        <UserForm
+          onSubmit={handleCreateUser}
+          onCancel={() => {
+            setIsCreateUserModalOpen(false);
+          }}
+          isLoading={isCreateUserLoading}
+        />
       </Modal>
     </div>
   );
