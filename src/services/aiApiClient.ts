@@ -8,31 +8,11 @@ const SERVICE_NAME = import.meta.env.VITE_SERVICE_NAME || 'taxable-backend';
 const AI_SERVICE_TOKEN = import.meta.env.VITE_SERVICE_TOKEN;
 
 /**
- * The AI service currently only allows a limited set of CORS headers.
- * When we send the optional service token header in the browser it causes
- * the preflight request to fail, so we only attach it when we are not in
- * a browser environment (e.g. SSR) or when the AI service shares the
- * same origin as the frontend.
+ * Always attach service token for AI service requests.
+ * The AI service requires X-Service-Token and X-Service headers for authentication.
  */
 const shouldAttachServiceToken = (): boolean => {
-  if (!AI_SERVICE_TOKEN) {
-    return false;
-  }
-
-  if (typeof window === 'undefined') {
-    return true;
-  }
-
-  try {
-    const aiUrl = new URL(AI_BASE_URL, window.location.origin);
-    return aiUrl.origin === window.location.origin;
-  } catch (error) {
-    console.warn('[AiApiClient] Unable to parse AI_BASE_URL for service token logic:', {
-      error,
-      AI_BASE_URL,
-    });
-    return false;
-  }
+  return !!AI_SERVICE_TOKEN;
 };
 
 class AiApiClient {

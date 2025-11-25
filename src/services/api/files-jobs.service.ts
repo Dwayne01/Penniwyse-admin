@@ -1,4 +1,4 @@
-import { apiClient } from '../apiClient';
+import { aiApiClient } from '../aiApiClient';
 import type { FilesAndJobsResponse, ProcessingJobInfo, FilesAndJobsQueryParams } from '../../types/files-jobs.types';
 import type {
   AiCronJobsResponse,
@@ -45,10 +45,9 @@ class FilesJobsService {
     console.log('[FilesJobsService] Request parameters:', queryParams);
 
     try {
-      console.log('[FilesJobsService] Making request to backend proxy...');
-      // Use backend proxy endpoint that adds service token server-side
-      const response = await apiClient.getClient().get<FilesAndJobsResponse>(
-        '/api/ai/jobs/files-and-jobs',
+      console.log('[FilesJobsService] Making request to AI service...');
+      const response = await aiApiClient.getClient().get<FilesAndJobsResponse>(
+        '/ai/jobs/files-and-jobs',
         {
           params: queryParams,
         }
@@ -93,10 +92,9 @@ class FilesJobsService {
     });
 
     try {
-      console.log('[FilesJobsService] Making retrigger request to backend proxy...');
-      // Use backend proxy endpoint that adds service token server-side
-      const response = await apiClient.getClient().post<ProcessingJobInfo>(
-        `/api/ai/jobs/${jobId}/retrigger`,
+      console.log('[FilesJobsService] Making retrigger request to AI service...');
+      const response = await aiApiClient.getClient().post<ProcessingJobInfo>(
+        `/ai/jobs/${jobId}/retrigger`,
         {}
       );
       
@@ -133,8 +131,7 @@ class FilesJobsService {
   async getAiCronJobs(): Promise<AiCronJobsResponse> {
     console.log('[FilesJobsService] getAiCronJobs called');
     try {
-      // Use backend proxy endpoint that adds service token server-side
-      const response = await apiClient.getClient().get<AiCronJobsResponse>('/api/ai/admin/cron/jobs');
+      const response = await aiApiClient.getClient().get<AiCronJobsResponse>('/ai/admin/cron/jobs');
       return response.data;
     } catch (error: unknown) {
       console.error('[FilesJobsService] getAiCronJobs failed:', error);
@@ -145,8 +142,7 @@ class FilesJobsService {
   async getAiCronStatus(): Promise<AiCronStatus> {
     console.log('[FilesJobsService] getAiCronStatus called');
     try {
-      // Use backend proxy endpoint that adds service token server-side
-      const response = await apiClient.getClient().get<AiCronStatus>('/api/ai/admin/cron/status');
+      const response = await aiApiClient.getClient().get<AiCronStatus>('/ai/admin/cron/status');
       return response.data;
     } catch (error: unknown) {
       console.error('[FilesJobsService] getAiCronStatus failed:', error);
@@ -166,9 +162,8 @@ class FilesJobsService {
     }
     
     try {
-      // Use backend proxy endpoint that adds service token server-side
-      const response = await apiClient.getClient().post<TriggerCronJobResponse>(
-        '/api/ai/admin/cron/trigger',
+      const response = await aiApiClient.getClient().post<TriggerCronJobResponse>(
+        '/ai/admin/cron/trigger',
         data
       );
       return response.data;
@@ -214,9 +209,8 @@ class FilesJobsService {
   async pauseAiCronService(serviceName: string): Promise<PauseResumeResponse> {
     console.log('[FilesJobsService] pauseAiCronService called:', serviceName);
     try {
-      // Use backend proxy endpoint that adds service token server-side
-      const response = await apiClient.getClient().post<PauseResumeResponse>(
-        `/api/ai/admin/cron/pause/${serviceName}`
+      const response = await aiApiClient.getClient().post<PauseResumeResponse>(
+        `/ai/admin/cron/pause/${serviceName}`
       );
       return response.data;
     } catch (error: unknown) {
@@ -228,9 +222,8 @@ class FilesJobsService {
   async resumeAiCronService(serviceName: string): Promise<PauseResumeResponse> {
     console.log('[FilesJobsService] resumeAiCronService called:', serviceName);
     try {
-      // Use backend proxy endpoint that adds service token server-side
-      const response = await apiClient.getClient().post<PauseResumeResponse>(
-        `/api/ai/admin/cron/resume/${serviceName}`
+      const response = await aiApiClient.getClient().post<PauseResumeResponse>(
+        `/ai/admin/cron/resume/${serviceName}`
       );
       return response.data;
     } catch (error: unknown) {
@@ -252,9 +245,8 @@ class FilesJobsService {
       if (params?.startDate) backendParams.start_date = params.startDate;
       if (params?.endDate) backendParams.end_date = params.endDate;
 
-      // Use backend proxy endpoint that adds service token server-side
-      const response = await apiClient.getClient().get<CronExecutionHistoryResponseRaw>(
-        '/api/ai/admin/cron/history',
+      const response = await aiApiClient.getClient().get<CronExecutionHistoryResponseRaw>(
+        '/ai/admin/cron/history',
         { params: backendParams }
       );
       
@@ -296,9 +288,8 @@ class FilesJobsService {
     }
     
     try {
-      // Use backend proxy endpoint that adds service token server-side
-      const response = await apiClient.getClient().post<TriggerAllCronJobsResponse>(
-        '/api/ai/admin/cron/trigger-all',
+      const response = await aiApiClient.getClient().post<TriggerAllCronJobsResponse>(
+        '/ai/admin/cron/trigger-all',
         data
       );
       return response.data;
@@ -323,9 +314,8 @@ class FilesJobsService {
       if (params?.limit) backendParams.limit = params.limit;
       if (params?.offset) backendParams.offset = params.offset;
 
-      // Use backend proxy endpoint that adds service token server-side
-      const response = await apiClient.getClient().post<AllInsightsResponseRaw>(
-        '/api/ai/admin/insights/all',
+      const response = await aiApiClient.getClient().post<AllInsightsResponseRaw>(
+        '/ai/admin/insights/all',
         backendParams
       );
       
