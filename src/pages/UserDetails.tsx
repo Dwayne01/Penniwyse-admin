@@ -131,7 +131,6 @@ export function UserDetails() {
       const response = await emailService.sendEmail(emailData);
       
       if (response && response.success) {
-        const recipientCount = response.recipientCount || response.sentCount || 1;
         alert(
           `Email sent successfully!\nRecipient: ${userDetails.user.email}${
             response.failedCount && response.failedCount > 0
