@@ -15,6 +15,8 @@ import { Content } from './pages/Content';
 import { FilesAndJobs } from './pages/FilesAndJobs';
 import { Analytics } from './pages/Analytics';
 import { Settings } from './pages/Settings';
+import { Waitlist } from './pages/Waitlist';
+import { Feedbacks } from './pages/Feedbacks';
 
 function App() {
   return (
@@ -123,6 +125,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/waitlist"
+            element={
+              <ProtectedRoute>
+                <Waitlist />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feedbacks"
+            element={
+              <ProtectedRoute>
+                <Feedbacks />
               </ProtectedRoute>
             }
           />

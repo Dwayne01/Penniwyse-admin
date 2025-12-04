@@ -14,6 +14,8 @@ import {
   Menu,
   X,
   FolderOpen,
+  Mail,
+  MessageSquare,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../../utils/cn';
@@ -36,6 +38,8 @@ const navItems: NavItem[] = [
   { label: 'Content', path: '/content', icon: FileText },
   { label: 'Files & Jobs', path: '/files-and-jobs', icon: FolderOpen },
   { label: 'Analytics', path: '/analytics', icon: BarChart3 },
+  { label: 'Waitlist', path: '/waitlist', icon: Mail },
+  { label: 'Feedbacks', path: '/feedbacks', icon: MessageSquare },
   { label: 'Settings', path: '/settings', icon: Settings },
 ];
 

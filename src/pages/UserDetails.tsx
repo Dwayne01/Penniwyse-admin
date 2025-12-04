@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui';
+import { Card, Button, Input, Modal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui';
 import { usersService } from '../services/api/users.service';
+import { emailService } from '../services/api/email.service';
+import { emailTemplateService } from '../services/api/email-template.service';
+import type { SendEmailDto } from '../types/email.types';
 import { formatDate, formatDateTime, formatCurrency } from '../utils/formatters';
-import { ArrowLeft, Award, Smartphone, Bell, CreditCard, Wallet, TrendingUp, Target, Calendar, FileText, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, Award, Smartphone, Bell, CreditCard, Wallet, TrendingUp, Target, Calendar, FileText, Gamepad2, Mail, Send, Eye, Edit } from 'lucide-react';
 import type { PushNotificationLog } from '../types/push-notification.types';
 import type { UserDetailsResponse } from '../types/user.types';
+import type { EmailTemplate } from '../types/email-template.types';
 
 type TabType = 'profile' | 'devices' | 'notifications' | 'push-logs' | 'badges' | 'integrations' | 'financial-accounts' | 'credit-cards' | 'transactions' | 'budgets' | 'savings-goals' | 'reminders' | 'notes' | 'gamification';
 
@@ -16,6 +20,13 @@ export function UserDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetailsResponse | null>(null);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailForm, setEmailForm] = useState({ subject: '', body: '', htmlBody: '' });
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | ''>('');
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [emailViewMode, setEmailViewMode] = useState<'edit' | 'preview'>('edit');
 
   useEffect(() => {
     if (userId) {
@@ -38,6 +49,133 @@ export function UserDetails() {
       setIsLoading(false);
     }
   };
+
+  const loadEmailTemplates = async () => {
+    try {
+      setIsLoadingTemplates(true);
+      const templates = await emailTemplateService.getTemplates({ isActive: true });
+      setEmailTemplates(Array.isArray(templates) ? templates : []);
+    } catch (err) {
+      console.error('Failed to load email templates:', err);
+      setEmailTemplates([]);
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
+
+  const handleOpenEmailModal = async () => {
+    if (!userDetails?.user?.email) {
+      alert('User email not available.');
+      return;
+    }
+    setIsEmailModalOpen(true);
+    setEmailForm({ subject: '', body: '', htmlBody: '' });
+    setSelectedTemplateId('');
+    await loadEmailTemplates();
+  };
+
+  const handleTemplateSelect = (templateId: number | '') => {
+    setSelectedTemplateId(templateId);
+    
+    if (templateId === '') {
+      setEmailForm({ subject: '', body: '', htmlBody: '' });
+      return;
+    }
+
+    const template = emailTemplates.find((t) => t.id === templateId);
+    if (template) {
+      const hasHtmlContent = !!(template.htmlContent || template.bodyHtml);
+      setEmailForm({
+        subject: template.subject || '',
+        body: hasHtmlContent ? '' : (template.textContent || template.body || ''),
+        htmlBody: hasHtmlContent ? (template.htmlContent || template.bodyHtml || '') : '',
+      });
+    }
+  };
+
+  const handleSendEmail = async () => {
+    const hasTextBody = emailForm.body.trim().length > 0;
+    const hasHtmlBody = emailForm.htmlBody.trim().length > 0;
+    
+    if (!emailForm.subject.trim()) {
+      alert('Please fill in the subject.');
+      return;
+    }
+    
+    if (hasHtmlTemplate && !hasHtmlBody) {
+      alert('Please fill in the HTML body.');
+      return;
+    }
+    
+    if (!hasHtmlTemplate && !hasTextBody) {
+      alert('Please fill in the text body.');
+      return;
+    }
+
+    if (!userDetails?.user?.email) {
+      alert('User email not available.');
+      return;
+    }
+
+    try {
+      setIsSendingEmail(true);
+      setError(null);
+      
+      const emailData: SendEmailDto = {
+        email: userDetails.user.email,
+        subject: emailForm.subject,
+        text: emailForm.body.trim() || undefined,
+        html: emailForm.htmlBody.trim() || undefined,
+      };
+
+      const response = await emailService.sendEmail(emailData);
+      
+      if (response && response.success) {
+        const recipientCount = response.recipientCount || response.sentCount || 1;
+        alert(
+          `Email sent successfully!\nRecipient: ${userDetails.user.email}${
+            response.failedCount && response.failedCount > 0
+              ? `\nFailed: ${response.failedCount}`
+              : ''
+          }${
+            response.failedEmails && response.failedEmails.length > 0
+              ? `\nFailed emails: ${response.failedEmails.join(', ')}`
+              : ''
+          }`
+        );
+        setIsEmailModalOpen(false);
+        setEmailForm({ subject: '', body: '', htmlBody: '' });
+        setSelectedTemplateId('');
+        setEmailViewMode('edit');
+      } else {
+        alert(`Failed to send email: ${response?.message || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      let errorMessage = 'Failed to send email';
+      
+      if (err?.response?.status === 404) {
+        errorMessage = 'Email sending endpoint not available. The backend endpoint /api/admin/users/send-email may not be implemented yet.';
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+      console.error('Failed to send email:', err);
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  // Determine if selected template has HTML content
+  const selectedTemplate = selectedTemplateId 
+    ? emailTemplates.find((t) => t.id === selectedTemplateId)
+    : null;
+  const hasHtmlTemplate = selectedTemplate 
+    ? !!(selectedTemplate.htmlContent || selectedTemplate.bodyHtml)
+    : false;
 
   if (isLoading) {
     return (
@@ -111,6 +249,12 @@ export function UserDetails() {
             <p className="text-gray-600 mt-1">User ID: {userDetails.user?.id}</p>
           </div>
         </div>
+        {userDetails.user?.email && (
+          <Button onClick={handleOpenEmailModal}>
+            <Mail className="w-4 h-4 mr-2" />
+            Send Email
+          </Button>
+        )}
       </div>
 
       {error && (
@@ -706,6 +850,214 @@ export function UserDetails() {
           </div>
         )}
       </Card>
+
+      {/* Email Modal */}
+      <Modal
+        isOpen={isEmailModalOpen}
+        onClose={() => {
+          setIsEmailModalOpen(false);
+          setEmailForm({ subject: '', body: '', htmlBody: '' });
+          setSelectedTemplateId('');
+          setEmailViewMode('edit');
+        }}
+        title={`Send Email to ${userDetails.user?.email || 'User'}`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-gray-600 mb-4">
+              Sending to: {userDetails.user?.email}
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email Template (Optional)
+            </label>
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => handleTemplateSelect(e.target.value ? Number(e.target.value) : '')}
+              disabled={isSendingEmail || isLoadingTemplates}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+            >
+              <option value="">Select a template...</option>
+              {Array.isArray(emailTemplates) && emailTemplates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name} {template.category ? `(${template.category})` : ''}
+                </option>
+              ))}
+            </select>
+            {isLoadingTemplates && (
+              <p className="mt-1 text-xs text-gray-500">Loading templates...</p>
+            )}
+            {emailTemplates.length === 0 && !isLoadingTemplates && (
+              <p className="mt-1 text-xs text-gray-500">No active templates available</p>
+            )}
+            {selectedTemplateId && (
+              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-blue-700">
+                  <FileText className="w-4 h-4" />
+                  <span>Template selected. You can edit the subject and body below.</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Subject <span className="text-red-500">*</span>
+            </label>
+            <Input
+              type="text"
+              placeholder="Email subject"
+              value={emailForm.subject}
+              onChange={(e) => setEmailForm((prev) => ({ ...prev, subject: e.target.value }))}
+              disabled={isSendingEmail}
+            />
+          </div>
+
+          {/* View Mode Tabs */}
+          <div className="flex items-center gap-2 border-b border-gray-200">
+            <button
+              type="button"
+              onClick={() => setEmailViewMode('edit')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                emailViewMode === 'edit'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Edit className="w-4 h-4 inline mr-2" />
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => setEmailViewMode('preview')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                emailViewMode === 'preview'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Eye className="w-4 h-4 inline mr-2" />
+              Preview
+            </button>
+          </div>
+
+          {emailViewMode === 'edit' ? (
+            <>
+              {!hasHtmlTemplate && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Text Body <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={8}
+                    placeholder="Email body (plain text)"
+                    value={emailForm.body}
+                    onChange={(e) => setEmailForm((prev) => ({ ...prev, body: e.target.value }))}
+                    disabled={isSendingEmail}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y font-mono text-sm"
+                  />
+                </div>
+              )}
+
+              {hasHtmlTemplate && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    HTML Body <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={12}
+                    placeholder="Email body (HTML)"
+                    value={emailForm.htmlBody}
+                    onChange={(e) => setEmailForm((prev) => ({ ...prev, htmlBody: e.target.value }))}
+                    disabled={isSendingEmail}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y font-mono text-sm"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    HTML email body is required for this template.
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email Preview
+              </label>
+              <div className="border border-gray-300 rounded-lg overflow-hidden bg-gray-50">
+                {emailForm.htmlBody ? (
+                  <div className="bg-white p-4">
+                    <div className="mb-2 text-xs text-gray-500">
+                      <strong>Subject:</strong> {emailForm.subject || '(No subject)'}
+                    </div>
+                    <div className="border-t border-gray-200 pt-4">
+                    <iframe
+                      srcDoc={emailForm.htmlBody}
+                      title="Email Preview"
+                      className="w-full border-0"
+                      style={{
+                        minHeight: '400px',
+                        maxHeight: '600px',
+                        overflow: 'auto',
+                      }}
+                      sandbox="allow-same-origin"
+                    />
+                    </div>
+                  </div>
+                ) : emailForm.body ? (
+                  <div className="bg-white p-4">
+                    <div className="mb-2 text-xs text-gray-500">
+                      <strong>Subject:</strong> {emailForm.subject || '(No subject)'}
+                    </div>
+                    <div className="border-t border-gray-200 pt-4">
+                      <pre className="whitespace-pre-wrap font-sans text-sm text-gray-900">
+                        {emailForm.body}
+                      </pre>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-gray-500">
+                    <p>No email content to preview.</p>
+                    <p className="text-xs mt-2">Add text or HTML body to see preview.</p>
+                  </div>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                This preview shows how the email will appear to recipients. HTML styles are rendered.
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setIsEmailModalOpen(false);
+                setEmailForm({ subject: '', body: '', htmlBody: '' });
+                setSelectedTemplateId('');
+                setEmailViewMode('edit');
+              }}
+              disabled={isSendingEmail}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendEmail}
+              disabled={
+                isSendingEmail || 
+                !emailForm.subject.trim() || 
+                (hasHtmlTemplate ? !emailForm.htmlBody.trim() : !emailForm.body.trim())
+              }
+              isLoading={isSendingEmail}
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Send Email
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
